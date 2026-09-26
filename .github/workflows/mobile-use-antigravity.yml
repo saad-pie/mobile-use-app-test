@@ -34,10 +34,10 @@ jobs:
 
       - name: Create Bulletproof Execution Script
         run: |
-          # Write the python execution script using absolute paths to prevent any FileNotFoundError
           cat << 'EOF' > run_agent.py
           import os
           import sys
+          import glob
 
           # Determine absolute paths dynamically
           workspace_root = os.getcwd()
@@ -46,14 +46,22 @@ jobs:
 
           import mobile_use
           
-          # Use absolute path for the configuration file
-          config_path = os.path.join(mobile_use_dir, 'config', 'mobileuse.yaml')
-          
           print(f"📂 Workspace Root: {workspace_root}")
-          print(f"📄 Resolved Config Path: {config_path}")
+          print(f"🔍 Searching for config file inside: {mobile_use_dir}")
           
-          if not os.path.exists(config_path):
-              raise FileNotFoundError(f"Critical Error: Config file not found at {config_path}")
+          # Dynamically search for the config file anywhere under the mobile-use directory
+          search_pattern = os.path.join(mobile_use_dir, '**', 'mobileuse.yaml')
+          matching_files = glob.glob(search_pattern, recursive=True)
+          
+          if not matching_files:
+              # Fallback lookups in case of case-sensitivity issues
+              fallback_pattern = os.path.join(mobile_use_dir, '**', '*.yaml')
+              all_yamls = glob.glob(fallback_pattern, recursive=True)
+              print(f"⚠️ Available YAML files found: {all_yamls}")
+              raise FileNotFoundError(f"Critical Error: 'mobileuse.yaml' could not be found anywhere inside {mobile_use_dir}")
+          
+          config_path = matching_files[0]
+          print(f"📄 Successfully Resolved Config Path: {config_path}")
 
           agent = mobile_use.Agent.from_params(dict(
               type='MultiAgent',
