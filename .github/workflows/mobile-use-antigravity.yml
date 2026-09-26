@@ -24,16 +24,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          # Removed 'cache: pip' to prevent missing file errors on empty root repos
 
-      - name: Clone and Install mobile-use Repository
+      - name: Clone and Install mobile-use Globally
         run: |
           git clone https://github.com/MadeAgents/mobile-use.git
           cd mobile-use
-          pip install uv
-          uv venv .venv --python=3.12
-          . .venv/bin/activate
-          uv pip install -e .
+          pip install --upgrade pip
+          pip install -e .
 
       - name: Enable KVM Hardware Acceleration
         run: |
@@ -52,17 +49,18 @@ jobs:
             echo "📱 Emulator booted successfully! Checking ADB..."
             adb devices
 
-            # Navigate into the cloned repository workspace
-            cd mobile-use
-            source .venv/bin/activate
-
             echo "🚀 Running mobile-use agent with Antigravity provider..."
             
-            # Execute Python script passing your custom Antigravity backend config
+            # Since mobile-use is installed globally, we just run python and point to the cloned repo's config
             python -c "
+            import os
+            import sys
+            # Add cloned mobile-use path to system path just in case
+            sys.path.append(os.path.abspath('mobile-use'))
+            
             import mobile_use
             
-            config_path = 'config/mobileuse.yaml'
+            config_path = 'mobile-use/config/mobileuse.yaml'
             agent = mobile_use.Agent.from_params(dict(
                 type='MultiAgent',
                 config_path=config_path,
@@ -76,7 +74,6 @@ jobs:
             agent.run(input_content=goal)
             "
         env:
-          # Wire your Antigravity Custom Provider Environment Variables
           OPENAI_API_KEY: "antigravity-free"
           OPENAI_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
           VLM_API_KEY: "antigravity-free"
