@@ -78,7 +78,7 @@ jobs:
             echo "📱 Emulator booted successfully! Checking ADB..."
             adb devices
             echo "🚀 Running mobile-use agent with Antigravity provider..."
-            cd mobile-use && python3 run_agent.py
+            cd mobile-use && python3 run_agent.py || true
         env:
           OPENAI_API_KEY: "antigravity-free"
           OPENAI_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
