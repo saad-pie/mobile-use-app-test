@@ -44,15 +44,19 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: Nexus 6
-          correlate-boot-logs: true
           script: |
             echo "📱 Emulator booted successfully! Checking ADB..."
             adb devices
             echo "🚀 Running mobile-use agent with Antigravity provider..."
-            cd mobile-use && python3 -c "
-            import yaml, os, mobile_use
+            
+            cd mobile-use
+            
+            # Write python script to an external file to completely avoid shell quote parsing issues
+            cat << 'EOF' > run_agent.py
+            import yaml
+            import os
+            import mobile_use
 
-            # Dynamically patch the config file to replace placeholders with actual runtime values
             config_path = 'configs/mobileuse.yaml'
             with open(config_path, 'r') as f:
                 cfg = yaml.safe_load(f)
@@ -70,10 +74,12 @@ jobs:
             agent.set_max_steps(10)
 
             print(f'🎯 Target Task: {goal}')
-            print(f'🧠 Target Model: {cfg[\"vlm\"][\"model_name\"]}')
+            print(f'🧠 Target Model: {cfg["vlm"]["model_name"]}')
             print('🤖 Starting agent execution...')
             agent.run(input_content=goal)
-            "
+            EOF
+
+            python3 run_agent.py
         env:
           OPENAI_API_KEY: "antigravity-free"
           OPENAI_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
