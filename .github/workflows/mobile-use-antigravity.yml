@@ -26,13 +26,16 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: Clone official mobile-use Repository
+      - name: Clone and Install mobile-use Repository
         run: |
           git clone https://github.com/MadeAgents/mobile-use.git
           cd mobile-use
           pip install uv
           uv venv .venv --python=3.12
-          
+          # Activate and install package dependencies inside the cloned dir
+          . .venv/bin/activate
+          uv pip install -e .
+
       - name: Enable KVM Hardware Acceleration
         run: |
           echo 'cmdline-tools;latest' | sdkmanager --licenses || true
@@ -50,12 +53,9 @@ jobs:
             echo "📱 Emulator booted successfully! Checking ADB..."
             adb devices
 
-            # Navigate into cloned repository workspace
+            # Navigate into the cloned repository workspace
             cd mobile-use
             source .venv/bin/activate
-            
-            # Install package dependencies
-            uv pip install --system -e .
 
             echo "🚀 Running mobile-use agent with Antigravity provider..."
             
@@ -63,14 +63,12 @@ jobs:
             python -c "
             import mobile_use
             
-            # Load standard multi-agent configuration
             config_path = 'config/mobileuse.yaml'
             agent = mobile_use.Agent.from_params(dict(
                 type='MultiAgent',
                 config_path=config_path,
             ))
             
-            # Configure agent parameters and runtime target
             goal = '${{ github.event.inputs.task_instruction }}'
             agent.set_max_steps(10)
             
@@ -85,3 +83,4 @@ jobs:
           VLM_API_KEY: "antigravity-free"
           VLM_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
           MODEL_NAME: "${{ github.event.inputs.model_name }}"
+          
