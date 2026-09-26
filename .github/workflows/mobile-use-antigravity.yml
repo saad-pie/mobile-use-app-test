@@ -32,50 +32,6 @@ jobs:
           pip install --upgrade pip
           pip install -e .
 
-      - name: Create Bulletproof Execution Script
-        run: |
-          cat << 'EOF' > run_agent.py
-          import os
-          import sys
-          import glob
-
-          # Determine absolute paths dynamically
-          workspace_root = os.getcwd()
-          mobile_use_dir = os.path.join(workspace_root, 'mobile-use')
-          sys.path.append(mobile_use_dir)
-
-          import mobile_use
-          
-          print(f"📂 Workspace Root: {workspace_root}")
-          print(f"🔍 Searching for config file inside: {mobile_use_dir}")
-          
-          # Dynamically search for the config file anywhere under the mobile-use directory
-          search_pattern = os.path.join(mobile_use_dir, '**', 'mobileuse.yaml')
-          matching_files = glob.glob(search_pattern, recursive=True)
-          
-          if not matching_files:
-              # Fallback lookups in case of case-sensitivity issues
-              fallback_pattern = os.path.join(mobile_use_dir, '**', '*.yaml')
-              all_yamls = glob.glob(fallback_pattern, recursive=True)
-              print(f"⚠️ Available YAML files found: {all_yamls}")
-              raise FileNotFoundError(f"Critical Error: 'mobileuse.yaml' could not be found anywhere inside {mobile_use_dir}")
-          
-          config_path = matching_files[0]
-          print(f"📄 Successfully Resolved Config Path: {config_path}")
-
-          agent = mobile_use.Agent.from_params(dict(
-              type='MultiAgent',
-              config_path=config_path,
-          ))
-          
-          goal = os.getenv('AGENT_GOAL', 'Turn on Bluetooth and WiFi')
-          agent.set_max_steps(10)
-          
-          print(f"🎯 Target Task: {goal}")
-          print("🤖 Starting agent execution...")
-          agent.run(input_content=goal)
-          EOF
-
       - name: Enable KVM Hardware Acceleration
         run: |
           echo 'cmdline-tools;latest' | sdkmanager --licenses || true
@@ -94,12 +50,26 @@ jobs:
             adb devices
 
             echo "🚀 Running mobile-use agent with Antigravity provider..."
-            python run_agent.py
+            cd mobile-use && python -c "
+            import mobile_use
+            
+            config_path = 'configs/mobileuse.yaml'
+            agent = mobile_use.Agent.from_params(dict(
+                type='MultiAgent',
+                config_path=config_path,
+            ))
+            
+            goal = '${{ github.event.inputs.task_instruction }}'
+            agent.set_max_steps(10)
+            
+            print(f'🎯 Target Task: {goal}')
+            print('🤖 Starting agent execution...')
+            agent.run(input_content=goal)
+            "
         env:
           OPENAI_API_KEY: "antigravity-free"
           OPENAI_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
           VLM_API_KEY: "antigravity-free"
           VLM_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
           MODEL_NAME: "${{ github.event.inputs.model_name }}"
-          AGENT_GOAL: "${{ github.event.inputs.task_instruction }}"
           
