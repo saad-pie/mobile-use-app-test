@@ -32,6 +32,30 @@ jobs:
           pip install --upgrade pip
           pip install -e .
 
+      - name: Create Execution Script
+        run: |
+          # Write the python execution script safely to disk to avoid shell quote errors
+          cat << 'EOF' > run_agent.py
+          import os
+          import sys
+          sys.path.append(os.path.abspath('mobile-use'))
+
+          import mobile_use
+          
+          config_path = 'mobile-use/config/mobileuse.yaml'
+          agent = mobile_use.Agent.from_params(dict(
+              type='MultiAgent',
+              config_path=config_path,
+          ))
+          
+          goal = os.getenv('AGENT_GOAL', 'Turn on Bluetooth and WiFi')
+          agent.set_max_steps(10)
+          
+          print(f"🎯 Target Task: {goal}")
+          print("🤖 Starting agent execution...")
+          agent.run(input_content=goal)
+          EOF
+
       - name: Enable KVM Hardware Acceleration
         run: |
           echo 'cmdline-tools;latest' | sdkmanager --licenses || true
@@ -50,33 +74,12 @@ jobs:
             adb devices
 
             echo "🚀 Running mobile-use agent with Antigravity provider..."
-            
-            # Since mobile-use is installed globally, we just run python and point to the cloned repo's config
-            python -c "
-            import os
-            import sys
-            # Add cloned mobile-use path to system path just in case
-            sys.path.append(os.path.abspath('mobile-use'))
-            
-            import mobile_use
-            
-            config_path = 'mobile-use/config/mobileuse.yaml'
-            agent = mobile_use.Agent.from_params(dict(
-                type='MultiAgent',
-                config_path=config_path,
-            ))
-            
-            goal = '${{ github.event.inputs.task_instruction }}'
-            agent.set_max_steps(10)
-            
-            print(f'🎯 Target Task: {goal}')
-            print('🤖 Starting agent execution...')
-            agent.run(input_content=goal)
-            "
+            python run_agent.py
         env:
           OPENAI_API_KEY: "antigravity-free"
           OPENAI_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
           VLM_API_KEY: "antigravity-free"
           VLM_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
           MODEL_NAME: "${{ github.event.inputs.model_name }}"
+          AGENT_GOAL: "${{ github.event.inputs.task_instruction }}"
           
