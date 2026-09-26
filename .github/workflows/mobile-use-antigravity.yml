@@ -1,0 +1,87 @@
+name: Mobile-Use Agent with Antigravity LLM
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_instruction:
+        description: 'Natural language task for the mobile agent'
+        required: true
+        default: 'Turn on Bluetooth and WiFi'
+      model_name:
+        description: 'Antigravity Model ID to use'
+        required: true
+        default: 'gemini-3.5-flash'
+
+jobs:
+  run-mobile-agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Current Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Clone official mobile-use Repository
+        run: |
+          git clone https://github.com/MadeAgents/mobile-use.git
+          cd mobile-use
+          pip install uv
+          uv venv .venv --python=3.12
+          
+      - name: Enable KVM Hardware Acceleration
+        run: |
+          echo 'cmdline-tools;latest' | sdkmanager --licenses || true
+          sudo chown $USER /dev/kvm
+
+      - name: Start Android Emulator and Execute Mobile-Use Agent
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: Nexus 6
+          correlate-boot-logs: true
+          script: |
+            echo "📱 Emulator booted successfully! Checking ADB..."
+            adb devices
+
+            # Navigate into cloned repository workspace
+            cd mobile-use
+            source .venv/bin/activate
+            
+            # Install package dependencies
+            uv pip install --system -e .
+
+            echo "🚀 Running mobile-use agent with Antigravity provider..."
+            
+            # Execute Python script passing your custom Antigravity backend config
+            python -c "
+            import mobile_use
+            
+            # Load standard multi-agent configuration
+            config_path = 'config/mobileuse.yaml'
+            agent = mobile_use.Agent.from_params(dict(
+                type='MultiAgent',
+                config_path=config_path,
+            ))
+            
+            # Configure agent parameters and runtime target
+            goal = '${{ github.event.inputs.task_instruction }}'
+            agent.set_max_steps(10)
+            
+            print(f'🎯 Target Task: {goal}')
+            print('🤖 Starting agent execution...')
+            agent.run(input_content=goal)
+            "
+        env:
+          # Wire your Antigravity Custom Provider Environment Variables
+          OPENAI_API_KEY: "antigravity-free"
+          OPENAI_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
+          VLM_API_KEY: "antigravity-free"
+          VLM_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
+          MODEL_NAME: "${{ github.event.inputs.model_name }}"
