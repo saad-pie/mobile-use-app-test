@@ -48,23 +48,21 @@ jobs:
           script: |
             echo "📱 Emulator booted successfully! Checking ADB..."
             adb devices
-
             echo "🚀 Running mobile-use agent with Antigravity provider..."
-            cd mobile-use
             
-            python3 - << 'EOF'
+            cd mobile-use && python3 - << 'EOF'
             import mobile_use
             import os
-
+            
             config_path = 'configs/mobileuse.yaml'
             agent = mobile_use.Agent.from_params(dict(
                 type='MultiAgent',
                 config_path=config_path,
             ))
-
+            
             goal = os.environ.get('TASK_INSTRUCTION', 'Turn on Bluetooth and WiFi')
             agent.set_max_steps(10)
-
+            
             print(f'🎯 Target Task: {goal}')
             print(f'🧠 Target Model: {os.environ.get("VLM_MODEL")}')
             print('🤖 Starting agent execution...')
