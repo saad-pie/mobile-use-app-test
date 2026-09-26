@@ -51,6 +51,7 @@ jobs:
             echo "🚀 Running mobile-use agent with Antigravity provider..."
             cd mobile-use && python3 -c "import mobile_use, os; agent = mobile_use.Agent.from_params({'type': 'MultiAgent', 'config_path': 'configs/mobileuse.yaml'}); goal = os.environ.get('TASK_INSTRUCTION', 'Turn on Bluetooth and WiFi'); agent.set_max_steps(10); print(f'🎯 Target Task: {goal}'); agent.run(input_content=goal)"
         env:
+          ANDROID_SERIAL: "emulator-5554"
           OPENAI_API_KEY: "antigravity-free"
           OPENAI_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
           VLM_API_KEY: "antigravity-free"
