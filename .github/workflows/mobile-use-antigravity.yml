@@ -32,6 +32,36 @@ jobs:
           pip install --upgrade pip
           pip install -e .
 
+      - name: Create Agent Runner Script
+        run: |
+          cd mobile-use
+          cat << 'EOF' > run_agent.py
+          import yaml
+          import os
+          import mobile_use
+
+          config_path = 'configs/mobileuse.yaml'
+          with open(config_path, 'r') as f:
+              cfg = yaml.safe_load(f)
+
+          cfg['env']['serial_no'] = 'emulator-5554'
+          cfg['vlm']['api_key'] = os.environ.get('VLM_API_KEY', 'antigravity-free')
+          cfg['vlm']['base_url'] = os.environ.get('VLM_BASE_URL', 'https://antigravity-seven-delta.vercel.app/v1')
+          cfg['vlm']['model_name'] = os.environ.get('VLM_MODEL', 'gemini-3.5-flash')
+
+          with open(config_path, 'w') as f:
+              yaml.dump(cfg, f)
+
+          agent = mobile_use.Agent.from_params({'type': 'MultiAgent', 'config_path': config_path})
+          goal = os.environ.get('TASK_INSTRUCTION', 'Turn on Bluetooth and WiFi')
+          agent.set_max_steps(10)
+
+          print(f'🎯 Target Task: {goal}')
+          print(f'🧠 Target Model: {cfg["vlm"]["model_name"]}')
+          print('🤖 Starting agent execution...')
+          agent.run(input_content=goal)
+          EOF
+
       - name: Enable KVM Hardware Acceleration
         run: |
           echo 'cmdline-tools;latest' | sdkmanager --licenses || true
@@ -48,38 +78,7 @@ jobs:
             echo "📱 Emulator booted successfully! Checking ADB..."
             adb devices
             echo "🚀 Running mobile-use agent with Antigravity provider..."
-            
-            cd mobile-use
-            
-            # Write python script to an external file to completely avoid shell quote parsing issues
-            cat << 'EOF' > run_agent.py
-            import yaml
-            import os
-            import mobile_use
-
-            config_path = 'configs/mobileuse.yaml'
-            with open(config_path, 'r') as f:
-                cfg = yaml.safe_load(f)
-
-            cfg['env']['serial_no'] = 'emulator-5554'
-            cfg['vlm']['api_key'] = os.environ.get('VLM_API_KEY', 'antigravity-free')
-            cfg['vlm']['base_url'] = os.environ.get('VLM_BASE_URL', 'https://antigravity-seven-delta.vercel.app/v1')
-            cfg['vlm']['model_name'] = os.environ.get('VLM_MODEL', 'gemini-3.5-flash')
-
-            with open(config_path, 'w') as f:
-                yaml.dump(cfg, f)
-
-            agent = mobile_use.Agent.from_params({'type': 'MultiAgent', 'config_path': config_path})
-            goal = os.environ.get('TASK_INSTRUCTION', 'Turn on Bluetooth and WiFi')
-            agent.set_max_steps(10)
-
-            print(f'🎯 Target Task: {goal}')
-            print(f'🧠 Target Model: {cfg["vlm"]["model_name"]}')
-            print('🤖 Starting agent execution...')
-            agent.run(input_content=goal)
-            EOF
-
-            python3 run_agent.py
+            cd mobile-use && python3 run_agent.py
         env:
           OPENAI_API_KEY: "antigravity-free"
           OPENAI_BASE_URL: "https://antigravity-seven-delta.vercel.app/v1"
