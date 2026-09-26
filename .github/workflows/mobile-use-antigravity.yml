@@ -39,6 +39,7 @@ jobs:
           import yaml
           import os
           import mobile_use
+          import traceback
 
           config_path = 'configs/mobileuse.yaml'
           with open(config_path, 'r') as f:
@@ -52,14 +53,23 @@ jobs:
           with open(config_path, 'w') as f:
               yaml.dump(cfg, f)
 
-          agent = mobile_use.Agent.from_params({'type': 'MultiAgent', 'config_path': config_path})
-          goal = os.environ.get('TASK_INSTRUCTION', 'Turn on Bluetooth and WiFi')
-          agent.set_max_steps(10)
+          try:
+              agent = mobile_use.Agent.from_params({'type': 'MultiAgent', 'config_path': config_path})
+              goal = os.environ.get('TASK_INSTRUCTION', 'Turn on Bluetooth and WiFi')
+              agent.set_max_steps(10)
 
-          print(f'🎯 Target Task: {goal}')
-          print(f'🧠 Target Model: {cfg["vlm"]["model_name"]}')
-          print('🤖 Starting agent execution...')
-          agent.run(input_content=goal)
+              print(f'🎯 Target Task: {goal}')
+              print(f'🧠 Target Model: {cfg["vlm"]["model_name"]}')
+              print('🤖 Starting agent execution...')
+              agent.run(input_content=goal)
+          except Exception as e:
+              print("\n💥 CAUGHT AGENT CRASH EXCEPTION:")
+              print(type(e), e)
+              if hasattr(e, 'response'):
+                  print("Response status:", getattr(e, 'response', 'N/A'))
+                  print("Response text:", getattr(e.response, 'text', 'N/A') if hasattr(e, 'response') else 'N/A')
+              traceback.print_exc()
+              raise e
           EOF
 
       - name: Enable KVM Hardware Acceleration
